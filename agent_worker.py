@@ -99,28 +99,15 @@ async def entrypoint(ctx: JobContext):
             temperature=0.7,
         )
     )
-
+    
     await session.start(
-        agent=agent,
-        room=ctx.room,
+    agent=agent,
+    room=ctx.room,
     )
-
-    # Avatar starten
-    # await tavus_avatar.start(session, room=ctx.room)
-
-    # Erste Antwort triggern
-    print("BEFORE SESSION START")
-
-    await session.start(
-        agent=agent,
-        room=ctx.room,
-    )
-
     print("AFTER SESSION START")
-    # await tavus_avatar.start(session, room=ctx.room)
-    print("AFTER AVATAR START")
+    
     await session.generate_reply(
-    instructions="Begrüße den Nutzer auf Deutsch und stelle eine einfache Frage."
+    instructions=build_instructions() + "\n\nBegrüße den Nutzer auf Deutsch und stelle eine einfache Frage."
     )
     print("AFTER GENERATE REPLY")
 
