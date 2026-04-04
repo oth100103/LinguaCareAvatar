@@ -71,6 +71,7 @@ Rules:
 # ENTRYPOINT
 # -----------------------------
 async def entrypoint(ctx: JobContext):
+    print("ENTRYPOINT STARTED FROM UI")
     print("ENTRYPOINT STARTED")
     print("Starting config polling thread...")
     threading.Thread(target=poll_config, daemon=True).start()

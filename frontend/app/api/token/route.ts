@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { AccessToken, type VideoGrant } from "livekit-server-sdk";
+import { RoomConfiguration } from "@livekit/protocol";
 
 export async function POST(req: Request) {
   const apiKey = process.env.LIVEKIT_API_KEY?.trim();
@@ -16,6 +17,13 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({}));
+  const roomConfig = {
+    agents: [
+      {
+        agent_name: "default",
+      },
+    ],
+  };
 
   const roomName =
     body.room_name ||
@@ -49,7 +57,7 @@ export async function POST(req: Request) {
   // Wichtig für Session APIs / Agent-Dispatch:
   // room_config vom Client direkt ins Token übernehmen
   if (body.room_config) {
-    at.roomConfig = body.room_config;
+    at.roomConfig = new RoomConfiguration(body.room_config);
   }
 
   const participantToken = await at.toJwt();
