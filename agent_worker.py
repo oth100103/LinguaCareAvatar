@@ -19,8 +19,8 @@ from livekit.plugins import openai
 state = {
     "scenario": "job interview",
     "level": "A2",
+    "tone": "friendly",
 }
-
 
 # -----------------------------
 # CONFIG VOM FRONTEND HOLEN
@@ -42,6 +42,7 @@ def poll_config():
         config = get_config()
         state["scenario"] = config.get("scenario", state["scenario"])
         state["level"] = config.get("level", state["level"])
+        state["tone"] = config.get("tone", state["tone"])
         print("Live state updated:", state)
         time.sleep(3)
 
@@ -52,11 +53,14 @@ def poll_config():
 def build_instructions():
     scenario = state["scenario"]
     level = state["level"]
+    tone = state["tone"]
 
     return f"""
-You are LinguaCare, a German tutor for the scenario: {scenario}.
+You are LinguaCare, a German tutor.
 
+Scenario: {scenario}
 Level: {level}
+Tone: {tone}
 
 Rules:
 - Speak ONLY German
@@ -64,8 +68,14 @@ Rules:
 - Use simple, clear sentences
 - Max 2 sentences
 - Ask one follow-up question
-"""
 
+Behavior:
+- friendly → warm, supportive
+- strict → correct and direct
+- annoyed → slightly impatient but still polite
+- nervous → hesitant, unsure tone
+- formal → polite and professional
+"""
 
 # -----------------------------
 # ENTRYPOINT
@@ -89,7 +99,7 @@ async def entrypoint(ctx: JobContext):
 
     # Agent erstellen
     agent = Agent(
-        instructions=build_instructions()
+        instructions="You are LinguaCare, a German tutor. Always follow the latest instructions provided at reply time."
     )
 
     # Session starten
