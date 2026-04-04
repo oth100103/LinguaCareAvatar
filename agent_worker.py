@@ -1,69 +1,133 @@
-import logging
 import os
+os.environ["LIVEKIT_DISABLE_TELEMETRY"] = "1"
+
+import asyncio
+import time
+import threading
+import requests
 
 from dotenv import load_dotenv
-
-from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, WorkerType, cli
-from livekit.plugins import openai, tavus
-
-logger = logging.getLogger("tavus-avatar-example")
-logger.setLevel(logging.INFO)
-
 load_dotenv()
+from livekit.agents import Agent, AgentSession, JobContext, cli, WorkerOptions
+from livekit.plugins import openai
+# from livekit.plugins import tavus
 
 
-async def entrypoint(ctx: JobContext):
-    # Connect to the LiveKit room before accessing local_participant-dependent features
-    await ctx.connect()
-    scenario = "job interview"
-    level = "A2"
-    session = AgentSession(
-        llm=openai.realtime.RealtimeModel(
-    voice="alloy",
-    temperature=0.7,
-        )
-    )
+# -----------------------------
+# GLOBAL STATE (wird vom Frontend gesteuert)
+# -----------------------------
+state = {
+    "scenario": "job interview",
+    "level": "A2",
+}
 
-    persona_id = os.getenv("TAVUS_PERSONA_ID")
-    replica_id = os.getenv("TAVUS_REPLICA_ID")
-    tavus_avatar = tavus.AvatarSession(persona_id=persona_id, replica_id=replica_id)
 
-    # start the agent first so it connects to the room
-    await session.start(
-        agent=Agent(instructions=f"""
+# -----------------------------
+# CONFIG VOM FRONTEND HOLEN
+# -----------------------------
+def get_config():
+    try:
+        res = requests.get("http://localhost:3000/api/config")
+        return res.json()
+    except:
+        return state
+
+
+# -----------------------------
+# POLLING THREAD (Live Update)
+# -----------------------------
+def poll_config():
+    global state
+    while True:
+        config = get_config()
+        state["scenario"] = config.get("scenario", state["scenario"])
+        state["level"] = config.get("level", state["level"])
+        print("Live state updated:", state)
+        time.sleep(3)
+
+
+# -----------------------------
+# DYNAMISCHER PROMPT
+# -----------------------------
+def build_instructions():
+    scenario = state["scenario"]
+    level = state["level"]
+
+    return f"""
 You are LinguaCare, a German tutor for the scenario: {scenario}.
 
 Level: {level}
-If the user says:
-- "set level to A1/A2/B1/B2"
-→ confirm the change and adapt immediately
 
 Rules:
 - Speak ONLY German
 - Adapt language to CEFR level {level}
-- Use appropriate vocabulary and sentence complexity
+- Use simple, clear sentences
 - Max 2 sentences
-- Correct mistakes briefly
 - Ask one follow-up question
+"""
 
-Level guidance:
-A1: very simple words, short sentences
-A2: simple everyday language
-B1: normal conversation
-B2: more complex explanations
 
-Style:
-- Friendly, structured, teacher-like
-- No flirting, no emotional bonding
-"""),
+# -----------------------------
+# ENTRYPOINT
+# -----------------------------
+async def entrypoint(ctx: JobContext):
+    print("ENTRYPOINT STARTED")
+    print("Starting config polling thread...")
+    threading.Thread(target=poll_config, daemon=True).start()
+
+    await ctx.connect()
+
+    # Tavus Avatar Setup
+    persona_id = os.getenv("TAVUS_PERSONA_ID")
+    replica_id = os.getenv("TAVUS_REPLICA_ID")
+
+    # tavus_avatar = tavus.AvatarSession(
+    #    persona_id=persona_id,
+    #    replica_id=replica_id,
+    #)
+
+    # Agent erstellen
+    agent = Agent(
+        instructions=build_instructions()
+    )
+
+    # Session starten
+    session = AgentSession(
+        llm=openai.realtime.RealtimeModel(
+            voice="alloy",
+            temperature=0.7,
+        )
+    )
+
+    await session.start(
+        agent=agent,
         room=ctx.room,
     )
 
-    # now start the avatar, room is connected and local_participant is available
-    await tavus_avatar.start(session, room=ctx.room)
+    # Avatar starten
+    # await tavus_avatar.start(session, room=ctx.room)
 
-    session.generate_reply(instructions="Sage Hallo in deutsche")
+    # Erste Antwort triggern
+    print("BEFORE SESSION START")
 
+    await session.start(
+        agent=agent,
+        room=ctx.room,
+    )
+
+    print("AFTER SESSION START")
+    # await tavus_avatar.start(session, room=ctx.room)
+    print("AFTER AVATAR START")
+    await session.generate_reply(
+    instructions="Begrüße den Nutzer auf Deutsch und stelle eine einfache Frage."
+    )
+    print("AFTER GENERATE REPLY")
+
+
+    # 🔥 LIVE PROMPT UPDATE LOOP
+    
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, worker_type=WorkerType.ROOM))
+    cli.run_app(
+        WorkerOptions(entrypoint_fnc=entrypoint)
+    )

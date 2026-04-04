@@ -1,68 +1,49 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useSession, useAgent } from '@livekit/components-react';
+import { useEffect } from 'react';
+import { TokenSource } from 'livekit-client';
+import { AgentSessionProvider } from '@/components/agents-ui/agent-session-provider';
+import { AgentControlBar } from '@/components/agents-ui/agent-control-bar';
+import { AgentAudioVisualizerAura } from '@/components/agents-ui/agent-audio-visualizer-aura';
+import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
 
-const updateConfig = async (newScenario: string, newLevel: string) => {
-  await fetch("/api/config", {
-    method: "POST",
-    body: JSON.stringify({
-      scenario: newScenario,
-      level: newLevel,
-    }),
-  });
-};
+const TOKEN_SOURCE = TokenSource.endpoint('/api/token');
 
-
-
-export default function Home() {
-  const [scenario, setScenario] = useState("job interview");
-  const [level, setLevel] = useState("A2");
+export default function Page() {
+  const session = useSession(TOKEN_SOURCE, { agentName: 'default' });
+  useEffect(() => {
+    session.start().catch(console.error);
+  }, []);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
-      <h1 className="text-2xl font-bold">LinguaCare UI</h1>
+    <AgentSessionProvider session={session}>
+      <Demo />
+    </AgentSessionProvider>
+  );
+}
 
-      {/* Scenario */}
-      <div className="flex flex-col gap-2">
-        <label>Scenario</label>
-        <select
-  value={scenario}
-  onChange={(e) => {
-    const value = e.target.value;
-    setScenario(value);
-    updateConfig(value, level);
+function Demo() {
+  const { state } = useAgent();
+
+  return (
+    <div className="p-10">
+      <AgentChatTranscript agentState={state} />
+
+      <AgentAudioVisualizerAura state={state} />
+
+<AgentControlBar
+  variant="livekit"
+  isChatOpen={false}
+  isConnected={true}
+  controls={{
+    leave: true,
+    microphone: true,
+    camera: false,
+    screenShare: false,
+    chat: true,
   }}
-  className="border p-2"
-        >
-          <option value="job interview">Job Interview</option>
-          <option value="cafe">Café</option>
-        </select>
-      </div>
-
-      {/* Level */}
-      <div className="flex flex-col gap-2">
-        <label>Level</label>
-        <select
-value={level}
-onChange={(e) => {
-  const value = e.target.value;
-  setLevel(value);
-  updateConfig(scenario, value);
-}}
-className="border p-2"
->     
-          <option value="A1">A1</option>
-          <option value="A2">A2</option>
-          <option value="B1">B1</option>
-          <option value="B2">B2</option>
-        </select>
-      </div>
-
-      {/* Debug Output */}
-      <div className="mt-4 p-4 border">
-        <p>Scenario: {scenario}</p>
-        <p>Level: {level}</p>
-      </div>
-    </main>
+/>
+    </div>
   );
 }
