@@ -6,6 +6,8 @@ import time
 import threading
 import requests
 
+transcript = []
+
 from dotenv import load_dotenv
 load_dotenv()
 from livekit.agents import Agent, AgentSession, JobContext, cli, WorkerOptions
@@ -30,7 +32,11 @@ def get_config():
         res = requests.get("http://localhost:3000/api/config")
         return res.json()
     except:
-        return state
+        return {
+            "scenario": "job interview",
+            "level": "A2",
+            "tone": "neutral"
+        }
 
 
 # -----------------------------
@@ -99,7 +105,7 @@ async def entrypoint(ctx: JobContext):
 
     # Agent erstellen
     agent = Agent(
-        instructions="You are LinguaCare, a German tutor. Always follow the latest instructions provided at reply time."
+    instructions=build_instructions()
     )
 
     # Session starten
@@ -113,11 +119,12 @@ async def entrypoint(ctx: JobContext):
     await session.start(
     agent=agent,
     room=ctx.room,
+    record=True,
     )
     print("AFTER SESSION START")
     
     await session.generate_reply(
-    instructions=build_instructions() + "\n\nBegrüße den Nutzer auf Deutsch und stelle eine einfache Frage."
+    instructions=build_instructions()
     )
     print("AFTER GENERATE REPLY")
 

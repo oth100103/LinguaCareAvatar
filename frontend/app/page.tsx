@@ -33,7 +33,13 @@ export default function Page() {
   const [level, setLevel] = useState('A2');
 
   useEffect(() => {
-    session.start().catch(console.error);
+    if (!session) return;
+  
+    console.log('SESSION START TRIGGERED');
+  
+    session.start().catch((err) => {
+      console.error('SESSION ERROR', err);
+    });
   }, [session]);
 
   const updateConfig = async (
@@ -59,17 +65,32 @@ export default function Page() {
   };
 
   return (
-    <AgentSessionProvider session={session}>
-      <Demo
-        scenario={scenario}
-        tone={tone}
-        level={level}
-        setScenario={setScenario}
-        setTone={setTone}
-        setLevel={setLevel}
-        updateConfig={updateConfig}
-      />
-    </AgentSessionProvider>
+    <div>
+      <div style={{ marginBottom: 20 }}>
+      <select
+      onChange={(e) => {
+        setScenario(e.target.value);
+        updateConfig(e.target.value, level, tone);
+      }}
+      >
+          <option value="job interview">Job Interview</option>
+          <option value="restaurant">Restaurant</option>
+          <option value="doctor">Doctor</option>
+        </select>
+      </div>
+  
+      <AgentSessionProvider session={session}>
+        <Demo
+          scenario={scenario}
+          tone={tone}
+          level={level}
+          setScenario={setScenario}
+          setTone={setTone}
+          setLevel={setLevel}
+          updateConfig={updateConfig}
+        />
+      </AgentSessionProvider>
+    </div>
   );
 }
 
