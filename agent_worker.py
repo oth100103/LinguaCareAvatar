@@ -119,7 +119,6 @@ async def entrypoint(ctx: JobContext):
     await session.start(
     agent=agent,
     room=ctx.room,
-    record=True,
     )
     print("AFTER SESSION START")
     
