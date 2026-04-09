@@ -1,2 +1,3 @@
+requests
 livekit-agents[openai, tavus, deepgram, rime]==1.0.17
 python-dotenv~=1.0
